@@ -25,25 +25,32 @@ export class ManterUsuarioComponent implements OnInit {
     const idParaEdicao = this.rotaAtual.snapshot.paramMap.get('id');
     if (idParaEdicao) {
       this.modoEdicao = true;
-      const usuarioAEditar = this.usuarioService.listar().find(usuario => usuario.id === idParaEdicao);
-      if (usuarioAEditar) {
-        this.usuario = usuarioAEditar;
-      }
+      this.usuarioService.listar().subscribe(usuarios => {
+        const usuarioAEditar = usuarios.find(usuario => usuario.id === idParaEdicao);
+        if (usuarioAEditar) {
+          this.usuario = usuarioAEditar;
+        }
+      });
     }
   }
 
   salvar() {
-    try {
-      if (this.modoEdicao) {
-        this.usuarioService.atualizar(this.usuario);
-        this.mensagemService.sucesso('Usuário atualizado com sucesso.');
-      } else {
-        this.usuarioService.inserir(this.usuario);
-        this.mensagemService.sucesso('Usuário cadastrado com sucesso.');
-      }
-      this.roteador.navigate(['listagem-usuarios']);
-    } catch (e: any) {
-      this.mensagemService.erro(e.message);
+    if (this.modoEdicao) {
+      this.usuarioService.atualizar(this.usuario).subscribe({
+        next: () => {
+          this.mensagemService.sucesso('Usuário atualizado com sucesso.');
+          this.roteador.navigate(['listagem-usuarios']);
+        },
+        error: (e: any) => this.mensagemService.erro(e.message)
+      });
+    } else {
+      this.usuarioService.inserir(this.usuario).subscribe({
+        next: () => {
+          this.mensagemService.sucesso('Usuário cadastrado com sucesso.');
+          this.roteador.navigate(['listagem-usuarios']);
+        },
+        error: (e: any) => this.mensagemService.erro(e.message)
+      });
     }
   }
 }
