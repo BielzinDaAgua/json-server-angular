@@ -1,38 +1,46 @@
 import { Injectable } from '@angular/core';
 import { Usuario } from "../model/usuario";
-import { USUARIOS } from "../model/USUARIOS";
+import { UsuarioRestService } from "./usuario-rest.service";
+import { Observable, of } from "rxjs";
+import { catchError, map, switchMap } from "rxjs/operators";
 
 @Injectable({
   providedIn: 'root'
 })
 export class UsuarioService {
 
-  usuarios = USUARIOS;
+  constructor(private usuarioRestService: UsuarioRestService) {}
 
-  constructor() {}
-
-  inserir(usuario: Usuario) {
-    this.validarMaiorIdade(usuario);
-    this.validarIdsDiferentes(usuario);
-    this.usuarios.push(usuario);
+  inserir(usuario: Usuario): Observable<void> {
+    return this.usuarioRestService.listar().pipe(
+      switchMap(usuarios => {
+        this.validarMaiorIdade(usuario);
+        this.validarIdsDiferentes(usuario, usuarios);
+        return this.usuarioRestService.inserir(usuario);
+      }),
+      map(() => {})
+    );
   }
 
-  listar() {
-    return this.usuarios;
+  listar(): Observable<Usuario[]> {
+    return this.usuarioRestService.listar();
   }
 
-  remover(usuarioARemover: Usuario) {
-    this.usuarios = this.usuarios.filter(usuario => usuario.id !== usuarioARemover.id);
+  remover(usuario: Usuario): Observable<void> {
+    return this.usuarioRestService.deletarUsuario(usuario.id);
   }
 
-  atualizar(usuario: Usuario) {
-    this.validarMaiorIdade(usuario);
-    const index = this.usuarios.findIndex(u => u.id === usuario.id);
-    if (index !== -1) {
-      this.usuarios[index] = usuario;
-    } else {
-      throw new Error('Usuário não encontrado.');
-    }
+  atualizar(usuario: Usuario): Observable<void> {
+    return this.usuarioRestService.listar().pipe(
+      switchMap(usuarios => {
+        this.validarMaiorIdade(usuario);
+        if (!usuarios.some(u => u.id === usuario.id)) {
+          throw new Error('Usuário não encontrado.');
+        }
+        return this.usuarioRestService.atualizarUsuario(usuario.id, usuario);
+      }),
+      map(() => {})
+    );
   }
 
   private validarMaiorIdade(usuario: Usuario) {
@@ -41,8 +49,8 @@ export class UsuarioService {
     }
   }
 
-  private validarIdsDiferentes(usuario: Usuario) {
-    const usuarioEncontrado = this.usuarios.find(u => u.id === usuario.id);
+  private validarIdsDiferentes(usuario: Usuario, usuarios: Usuario[]) {
+    const usuarioEncontrado = usuarios.find(u => u.id === usuario.id);
     if (usuarioEncontrado) {
       throw new Error('ID já cadastrado!');
     }
